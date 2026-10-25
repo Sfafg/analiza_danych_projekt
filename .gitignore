@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Środowiska wirtualne
+.venv/
+venv/
+env/
+ENV/
+
+# Narzędzia i cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+
+# Notebooki
+.ipynb_checkpoints/
+
+# Wygenerowane wyniki
+wykresy/
+
+# Systemowe
+.DS_Store
+Thumbs.db
