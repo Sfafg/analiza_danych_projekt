@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.so
 build/
+data/
+games_march2025_cleaned.csv
 dist/
 *.egg-info/
 .eggs/
@@ -22,13 +24,3 @@ ENV/
 .coverage
 .coverage.*
 htmlcov/
-
-# Notebooki
-.ipynb_checkpoints/
-
-# Wygenerowane wyniki
-wykresy/
-
-# Systemowe
-.DS_Store
-Thumbs.db
