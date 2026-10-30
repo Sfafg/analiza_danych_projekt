@@ -1,6 +1,8 @@
 import os
 import pandas as pd
-
+import ast
+import json
+from pathlib import Path
 
 def prepare_build_dir(directory_name):
     folder = f"build/{directory_name}"
@@ -37,9 +39,64 @@ def get_data():
             ]
         ]
 
+    def encode_tags(data): # the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
+        tag_order_path = Path(__file__).resolve().parent / "kolejnosc_tagow.txt"
+
+        tag_order = [
+            tag.strip()
+            for tag in tag_order_path.read_text(encoding="utf-8-sig").split(",")
+            if tag.strip()
+        ]
+
+        if len(tag_order) != len(set(tag_order)):
+            raise ValueError("The tag order file contains duplicate tags")
+
+        def parse_tags(value):
+            if pd.isna(value) or not str(value).strip():
+                return set()
+
+            parsed = ast.literal_eval(value)
+
+            if not isinstance(parsed, (dict, list)):
+                raise ValueError(f"Unexpected tags format: {value}")
+
+            return set(parsed)
+
+        game_tags = data["tags"].apply(parse_tags)
+
+        found_tags = set()
+        for tags in game_tags:
+            found_tags.update(tags)
+
+        ordered_found_tags = [
+            tag for tag in tag_order
+            if tag in found_tags
+        ]
+
+        output_path = Path(folder) / "tagi_w_danych.txt"
+        output_path.write_text(
+            ", ".join(ordered_found_tags),
+            encoding="utf-8"
+        )
+
+        unknown_tags = found_tags - set(tag_order)
+        if unknown_tags:
+            print(f"Skipped {len(unknown_tags)} tags not present in the tag order")
+
+        result = data.copy()
+        result["tags"] = game_tags.apply(
+            lambda tags: json.dumps(
+                [int(tag in tags) for tag in tag_order],
+                separators=(",", ":")
+            )
+        )
+
+        return result
+
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
+        ("games_march2025_cleaned_multi_hot_tags", encode_tags),
     ]
 
     latest_data = None
@@ -60,3 +117,5 @@ def get_data():
         latest_data = data
 
     return latest_data
+
+get_data()
