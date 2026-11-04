@@ -1,6 +1,24 @@
+import ast
+import textwrap
+
 import matplotlib.pyplot as plt
 import numpy as np
 import utils
+
+
+def format_label(value):
+    text = str(value)
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        parsed = None
+
+    if isinstance(parsed, list):
+        text = ", ".join(map(str, parsed))
+    elif isinstance(parsed, dict):
+        text = ", ".join(f"{key}: {count}" for key, count in parsed.items())
+
+    return textwrap.fill(text, width=45)
 
 folder = utils.prepare_build_dir("charakterystyka")
 folder_wykresy = utils.prepare_build_dir("wykresy")
@@ -36,19 +54,27 @@ with open(f"{folder}/charakterystyka.txt", "w") as f:
 
 folder = folder_wykresy
 for column in data.columns:
-    if column == "appid":
+    if column == "appid" or column == "name":
         continue
 
-    if data[column].dtype == "object":
-        continue
-        plt.figure()
-        data[column].value_counts().plot(kind="bar")
-        plt.title(f"Frequency of {column}")
-        plt.xlabel(column)
-        plt.ylabel("Count")
-        plt.xticks(rotation=45, ha="right")
+    print(column)
+    if data[column].dtype == "object" or data[column].dtype == "string":
+        counts = data[column][data[column] != "[]"].value_counts().head(30)
+        labels = [format_label(label) for label in counts.index]
+        total_lines = sum(label.count("\n") + 1 for label in labels)
+        height = 6 if total_lines <= 20 else total_lines * 0.3
+        plt.figure(figsize=(16, height))
+        counts.plot(kind="barh")
+
+        plt.title(f"Top 30 frequencies of {column}")
+        plt.xlabel("Count")
+        plt.ylabel(column)
+        plt.yticks(range(len(counts)), labels, fontsize=8)
+        plt.gca().invert_yaxis()
         plt.tight_layout()
-        plt.savefig(f"{folder}/bar_{column}.png", dpi=300)
+        plt.savefig(f"{folder}/bar_{column}.png", dpi=150)
+        plt.close()
+
         continue
 
     values = data[column][data[column] != 0]

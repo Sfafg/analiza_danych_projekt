@@ -4,6 +4,7 @@ import ast
 import json
 from pathlib import Path
 
+
 def prepare_build_dir(directory_name):
     folder = f"build/{directory_name}"
     os.makedirs(folder, exist_ok=True)
@@ -39,9 +40,10 @@ def get_data():
             ]
         ]
 
-
     def encode_tags(data):
-        def parse_tags(value):# the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
+        def parse_tags(
+            value,
+        ):  # the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
             if pd.isna(value) or not str(value).strip():
                 return set()
 
@@ -61,16 +63,12 @@ def get_data():
         tag_order = sorted(all_tags, key=str.casefold)
 
         tag_order_path = Path(folder) / "kolejnosc_tagow.txt"
-        tag_order_path.write_text(
-            ", ".join(tag_order),
-            encoding="utf-8"
-        )
+        tag_order_path.write_text(", ".join(tag_order), encoding="utf-8")
 
         result = data.copy()
         result["tags"] = game_tags.apply(
             lambda tags: json.dumps(
-                [int(tag in tags) for tag in tag_order],
-                separators=(",", ":")
+                [int(tag in tags) for tag in tag_order], separators=(",", ":")
             )
         )
 
