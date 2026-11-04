@@ -101,5 +101,3 @@ def get_data():
         latest_data = data
 
     return latest_data
-
-get_data()
