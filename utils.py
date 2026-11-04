@@ -39,19 +39,9 @@ def get_data():
             ]
         ]
 
-    def encode_tags(data): # the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
-        tag_order_path = Path(__file__).resolve().parent / "kolejnosc_tagow.txt"
 
-        tag_order = [
-            tag.strip()
-            for tag in tag_order_path.read_text(encoding="utf-8-sig").split(",")
-            if tag.strip()
-        ]
-
-        if len(tag_order) != len(set(tag_order)):
-            raise ValueError("The tag order file contains duplicate tags")
-
-        def parse_tags(value):
+    def encode_tags(data):
+        def parse_tags(value):# the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
             if pd.isna(value) or not str(value).strip():
                 return set()
 
@@ -60,28 +50,21 @@ def get_data():
             if not isinstance(parsed, (dict, list)):
                 raise ValueError(f"Unexpected tags format: {value}")
 
-            return set(parsed)
+            return set(parsed)  # słownik: klucze; lista: jej elementy
 
         game_tags = data["tags"].apply(parse_tags)
 
-        found_tags = set()
+        all_tags = set()
         for tags in game_tags:
-            found_tags.update(tags)
+            all_tags.update(tags)
 
-        ordered_found_tags = [
-            tag for tag in tag_order
-            if tag in found_tags
-        ]
+        tag_order = sorted(all_tags, key=str.casefold)
 
-        output_path = Path(folder) / "tagi_w_danych.txt"
-        output_path.write_text(
-            ", ".join(ordered_found_tags),
+        tag_order_path = Path(folder) / "kolejnosc_tagow.txt"
+        tag_order_path.write_text(
+            ", ".join(tag_order),
             encoding="utf-8"
         )
-
-        unknown_tags = found_tags - set(tag_order)
-        if unknown_tags:
-            print(f"Skipped {len(unknown_tags)} tags not present in the tag order")
 
         result = data.copy()
         result["tags"] = game_tags.apply(
@@ -91,6 +74,7 @@ def get_data():
             )
         )
 
+        print(f"Saved {len(tag_order)} tag names to {tag_order_path}")
         return result
 
     pipeline = [
@@ -117,3 +101,5 @@ def get_data():
         latest_data = data
 
     return latest_data
+
+get_data()
