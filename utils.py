@@ -90,7 +90,7 @@ def get_data():
 
         print(f"Saved {len(tag_order)} tag names to {tag_order_path}")
         return result
-    
+
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
@@ -117,31 +117,32 @@ def get_data():
 
     return latest_data
 
-def decode_tags(vector):
-    tag_order_path = (
-        Path(__file__).resolve().parent / "data" / "kolejnosc_tagow.txt"
-    )
 
-    tag_order = [
-        tag.strip()
-        for tag in tag_order_path.read_text(encoding="utf-8").split(",")
-        if tag.strip()
-    ]
+TAG_ORDER = None
+
+
+def decode_tags(vector):
+    global TAG_ORDER
+
+    if TAG_ORDER is None:
+        tag_order_path = (
+            Path(__file__).resolve().parent / "data" / "kolejnosc_tagow.txt"
+        )
+        TAG_ORDER = [
+            tag.strip()
+            for tag in tag_order_path.read_text(encoding="utf-8").split(",")
+            if tag.strip()
+        ]
 
     # Przydatne, gdy wektor pochodzi z komórki pliku CSV.
     if isinstance(vector, str):
         vector = json.loads(vector)
 
-    if len(vector) != len(tag_order):
-        raise ValueError(
-            f"Expected {len(tag_order)} values, got {len(vector)}"
-        )
+    if len(vector) != len(TAG_ORDER):
+        raise ValueError(f"Expected {len(TAG_ORDER)} values, got {len(vector)}")
 
     if any(value not in (0, 1) for value in vector):
         raise ValueError("The vector must contain only 0 and 1")
 
-    return [
-        tag
-        for tag, value in zip(tag_order, vector)
-        if value == 1
-    ]
+    return [tag for tag, value in zip(TAG_ORDER, vector) if value == 1]
+

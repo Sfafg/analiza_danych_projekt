@@ -13,7 +13,7 @@ def format_label(value):
     except (ValueError, SyntaxError):
         parsed = None
 
-    if isinstance(parsed, list):
+    if isinstance(parsed, (list, tuple)):
         text = ", ".join(map(str, parsed))
     elif isinstance(parsed, dict):
         text = ", ".join(f"{key}: {count}" for key, count in parsed.items())
@@ -59,7 +59,13 @@ for column in data.columns:
         continue
 
     if data[column].dtype == "object" or data[column].dtype == "string":
-        counts = data[column][data[column] != "[]"].value_counts().head(30)
+        column_data = data[column][data[column] != "[]"]
+        if column == "tags":
+            column_data = column_data.apply(utils.decode_tags)
+            column_data = column_data.apply(tuple)
+            column_data = column_data[column_data != ()]
+
+        counts = column_data.value_counts().head(30)
         labels = [format_label(label) for label in counts.index]
         total_lines = sum(label.count("\n") + 1 for label in labels)
         height = 6 if total_lines <= 20 else total_lines * 0.3
@@ -77,25 +83,31 @@ for column in data.columns:
 
         continue
 
+    use_log_scale = False if column in {"price"} else True
+
     values = data[column][data[column] != 0]
-    log_values = values
 
     n_bins = len(np.histogram_bin_edges(np.log10(values[values > 0]), bins="auto"))
     bins = np.logspace(np.log10(values.min()), np.log10(values.max()), n_bins)
+    bins = bins if use_log_scale else "auto"
 
     plt.figure()
-    plt.hist(log_values, bins=bins, edgecolor="black")
+    plt.hist(values, bins=bins, edgecolor="black")
     plt.title(f"Histogram {column} (w skali logarytmicznej)")
-    plt.xscale("log")
+    if use_log_scale:
+        plt.xscale("log")
+    else:
+        plt.yscale("log")
     plt.xlabel(f"{column}")
     plt.ylabel("Liczebność")
     plt.savefig(f"{folder}/histogram_{column}_log.png", dpi=300, bbox_inches="tight")
     plt.close()
 
     plt.figure()
-    plt.boxplot(log_values)
+    plt.boxplot(values)
     plt.title(f"Wykres pudełkowy {column} (w skali logarytmicznej)")
-    plt.yscale("log")
+    if use_log_scale:
+        plt.yscale("log")
     plt.ylabel(f"{column}")
     plt.savefig(f"{folder}/boxplot_{column}_log.png", dpi=300, bbox_inches="tight")
     plt.close()
