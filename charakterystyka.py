@@ -20,6 +20,7 @@ def format_label(value):
 
     return textwrap.fill(text, width=45)
 
+
 folder = utils.prepare_build_dir("charakterystyka")
 folder_wykresy = utils.prepare_build_dir("wykresy")
 data = utils.get_data()
@@ -57,9 +58,11 @@ for column in data.columns:
     if column == "appid" or column == "name":
         continue
 
-    print(column)
     if data[column].dtype == "object" or data[column].dtype == "string":
-        counts = data[column][data[column] != "[]"].value_counts().head(30)
+        unique_count = data[column].nunique()
+        print(f"{column}: {unique_count} unique elements")
+
+        counts = data[column][data[column] != "[]"].value_counts().head(100)
         labels = [format_label(label) for label in counts.index]
         total_lines = sum(label.count("\n") + 1 for label in labels)
         height = 6 if total_lines <= 20 else total_lines * 0.3

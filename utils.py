@@ -40,6 +40,22 @@ def get_data():
             ]
         ]
 
+    def simplify_tags(data):
+        def extract_tags(x):
+            if isinstance(x, str):
+                x = ast.literal_eval(x)
+
+            if isinstance(x, dict):
+                x = list(x.keys())
+
+            if isinstance(x, list):
+                return str(sorted(x, key=str.lower))
+
+            return x
+
+        data["tags"] = data["tags"].apply(extract_tags)
+        return data
+
     def encode_tags(data):
         def parse_tags(
             value,
@@ -104,6 +120,7 @@ def get_data():
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
+        ("games_march2025_cleaned_simplified_tags", simplify_tags),
         ("games_march2025_cleaned_multi_hot_tags", encode_tags),
         ("games_march2025_cleaned_tags_decoded", decode_tags)
     ]
