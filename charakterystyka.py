@@ -78,12 +78,16 @@ for column in data.columns:
         continue
 
     values = data[column][data[column] != 0]
-    log_values = np.log1p(values)
+    log_values = values
+
+    n_bins = len(np.histogram_bin_edges(np.log10(values[values > 0]), bins="auto"))
+    bins = np.logspace(np.log10(values.min()), np.log10(values.max()), n_bins)
 
     plt.figure()
-    plt.hist(log_values, bins="auto", edgecolor="black")
+    plt.hist(log_values, bins=bins, edgecolor="black")
     plt.title(f"Histogram {column} (w skali logarytmicznej)")
-    plt.xlabel(f"log(1 + {column})")
+    plt.xscale("log")
+    plt.xlabel(f"{column}")
     plt.ylabel("Liczebność")
     plt.savefig(f"{folder}/histogram_{column}_log.png", dpi=300, bbox_inches="tight")
     plt.close()
@@ -91,6 +95,7 @@ for column in data.columns:
     plt.figure()
     plt.boxplot(log_values)
     plt.title(f"Wykres pudełkowy {column} (w skali logarytmicznej)")
-    plt.ylabel(f"log(1 + {column})")
+    plt.yscale("log")
+    plt.ylabel(f"{column}")
     plt.savefig(f"{folder}/boxplot_{column}_log.png", dpi=300, bbox_inches="tight")
     plt.close()
