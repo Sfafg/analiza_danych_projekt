@@ -75,10 +75,37 @@ def get_data():
         print(f"Saved {len(tag_order)} tag names to {tag_order_path}")
         return result
 
+    def decode_tags(data): # does the inverse of encode_tags
+        tag_order_path = Path(folder) / "kolejnosc_tagow.txt"
+        tag_order = [
+            tag.strip()
+            for tag in tag_order_path.read_text(encoding="utf-8").split(",")
+            if tag.strip()
+        ]
+
+        def decode_row(value):
+            vector = json.loads(value) if isinstance(value, str) else value
+
+            if len(vector) != len(tag_order):
+                raise ValueError(
+                    f"Expected {len(tag_order)} values, got {len(vector)}"
+                )
+
+            return [
+                tag
+                for tag, present in zip(tag_order, vector)
+                if present == 1
+            ]
+
+        result = data.copy()
+        result["tags"] = result["tags"].apply(decode_row)
+        return result
+    
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
         ("games_march2025_cleaned_multi_hot_tags", encode_tags),
+        ("games_march2025_cleaned_tags_decoded", decode_tags)
     ]
 
     latest_data = None
