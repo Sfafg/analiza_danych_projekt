@@ -59,18 +59,15 @@ for column in data.columns:
         continue
 
     if data[column].dtype == "object" or data[column].dtype == "string":
-        unique_count = data[column].nunique()
-        print(f"{column}: {unique_count} unique elements")
-
-        counts = data[column][data[column] != "[]"].value_counts().head(100)
+        counts = data[column][data[column] != "[]"].value_counts().head(30)
         labels = [format_label(label) for label in counts.index]
         total_lines = sum(label.count("\n") + 1 for label in labels)
         height = 6 if total_lines <= 20 else total_lines * 0.3
         plt.figure(figsize=(16, height))
         counts.plot(kind="barh")
 
-        plt.title(f"Top 30 frequencies of {column}")
-        plt.xlabel("Count")
+        plt.title(f"Najczęstrze 30 {column}")
+        plt.xlabel("Częstość")
         plt.ylabel(column)
         plt.yticks(range(len(counts)), labels, fontsize=8)
         plt.gca().invert_yaxis()
@@ -87,7 +84,7 @@ for column in data.columns:
     plt.hist(log_values, bins="auto", edgecolor="black")
     plt.title(f"Histogram {column} (w skali logarytmicznej)")
     plt.xlabel(f"log(1 + {column})")
-    plt.ylabel("Frequency")
+    plt.ylabel("Liczebność")
     plt.savefig(f"{folder}/histogram_{column}_log.png", dpi=300, bbox_inches="tight")
     plt.close()
 
