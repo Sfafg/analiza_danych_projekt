@@ -28,7 +28,6 @@ def get_data():
             [
                 "appid",
                 "name",
-                "price",
                 "metacritic_score",
                 "achievements",
                 "recommendations",
