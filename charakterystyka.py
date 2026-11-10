@@ -44,6 +44,12 @@ with open(f"{folder}/charakterystyka.txt", "w") as f:
             mean = column_data.mean()
             median = column_data.median()
             zero_values = len(column_data[column_data == 0])
+        else:
+            zero_values = len(column_data[column_data == "[]"])
+            if column == "tags":
+                d = column_data.apply(utils.decode_tags)
+                d = d.apply(tuple)
+                zero_values = len(d[d != ()])
 
         print(column, file=f)
         print("Minimum:", min, file=f)
@@ -83,31 +89,33 @@ for column in data.columns:
 
         continue
 
-    use_log_scale = False if column in {"price"} else True
-
     values = data[column][data[column] != 0]
 
+    log_scale = (
+        True
+        if column in {"achievements", "negative", "positive", "recommendations"}
+        else False
+    )
     n_bins = len(np.histogram_bin_edges(np.log10(values[values > 0]), bins="auto"))
     bins = np.logspace(np.log10(values.min()), np.log10(values.max()), n_bins)
-    bins = bins if use_log_scale else "auto"
+    bins = bins if log_scale else "auto"
 
+    # Log X
     plt.figure()
     plt.hist(values, bins=bins, edgecolor="black")
-    plt.title(f"Histogram {column} (w skali logarytmicznej)")
-    if use_log_scale:
+    plt.title(f"Histogram {column}")
+    if log_scale:
         plt.xscale("log")
-    else:
-        plt.yscale("log")
     plt.xlabel(f"{column}")
     plt.ylabel("Liczebność")
-    plt.savefig(f"{folder}/histogram_{column}_log.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"{folder}/histogram_{column}.png", dpi=300, bbox_inches="tight")
     plt.close()
 
     plt.figure()
     plt.boxplot(values)
-    plt.title(f"Wykres pudełkowy {column} (w skali logarytmicznej)")
-    if use_log_scale:
+    plt.title(f"Wykres pudełkowy {column}")
+    if log_scale:
         plt.yscale("log")
     plt.ylabel(f"{column}")
-    plt.savefig(f"{folder}/boxplot_{column}_log.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"{folder}/boxplot_{column}.png", dpi=300, bbox_inches="tight")
     plt.close()
