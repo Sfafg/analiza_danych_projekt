@@ -78,7 +78,7 @@ for column in data.columns:
         plt.figure(figsize=(16, height))
         counts.plot(kind="barh")
 
-        plt.title(f"Najczęstrze 30 {column}")
+        plt.title(f"Najczęstsze 30 combinacje {column}")
         plt.xlabel("Częstość")
         plt.ylabel(column)
         plt.yticks(range(len(counts)), labels, fontsize=8)
