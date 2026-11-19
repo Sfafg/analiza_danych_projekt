@@ -89,12 +89,24 @@ def get_data():
 
         print(f"Saved {len(tag_order)} tag names to {tag_order_path}")
         return result
+    
+    def add_positive_ratio(data): # add positive/(positive+negative) ratio
+        result = data.copy()
+
+        total_reviews = result["positive"] + result["negative"]
+
+        result["positive_ratio"] = (
+            result["positive"] / total_reviews.where(total_reviews > 0)
+        )#.fillna(0) - if you want to fill rows w/ no reviews w/ 0
+
+        return result.drop(columns=["positive", "negative"])
 
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
         ("games_march2025_cleaned_simplified_tags", simplify_tags),
         ("games_march2025_cleaned_multi_hot_tags", encode_tags),
+        ("games_march2025_cleaned_positive_ratio", add_positive_ratio),
     ]
 
     latest_data = None
@@ -133,7 +145,6 @@ def decode_tags(vector):
             if tag.strip()
         ]
 
-    # Przydatne, gdy wektor pochodzi z komórki pliku CSV.
     if isinstance(vector, str):
         vector = json.loads(vector)
 
