@@ -16,7 +16,7 @@ def prepare_build_dir(directory_name):
     return folder
 
 
-def get_data():
+def get_data(target_pipeline_stage=None):
     folder = "data"
     os.makedirs("data", exist_ok=True)
 
@@ -109,9 +109,19 @@ def get_data():
         ("games_march2025_cleaned_positive_ratio", add_positive_ratio),
     ]
 
+    if target_pipeline_stage is None:
+        target_step = len(pipeline) - 1
+    else:
+        pipeline_stages = [stage for stage, _ in pipeline]
+
+        if target_pipeline_stage not in pipeline_stages:
+            raise ValueError(f"Unknown pipeline stage: {target_pipeline_stage}")
+
+        target_step = pipeline_stages.index(target_pipeline_stage)
+
     latest_data = None
     latest_step = -1
-    for step in reversed(range(len(pipeline))):
+    for step in reversed(range(target_step + 1)):
         file_name, func = pipeline[step]
         path = f"{folder}/{file_name}.csv"
         if os.path.exists(path):
@@ -119,7 +129,7 @@ def get_data():
             latest_step = step
             break
 
-    for step in range(latest_step + 1, len(pipeline)):
+    for step in range(latest_step + 1, target_step + 1):
         file_name, func = pipeline[step]
         path = f"{folder}/{file_name}.csv"
         data = func(latest_data)
