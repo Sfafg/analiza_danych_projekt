@@ -18,12 +18,12 @@ def format_label(value):
     elif isinstance(parsed, dict):
         text = ", ".join(f"{key}: {count}" for key, count in parsed.items())
 
-    return textwrap.fill(text, width=45)
+    return textwrap.fill(text, width=65)
 
 
 folder = utils.prepare_build_dir("charakterystyka")
 folder_wykresy = utils.prepare_build_dir("wykresy")
-data = utils.get_data()
+data = utils.get_data("games_march2025_cleaned_review_scored")
 
 
 with open(f"{folder}/charakterystyka.txt", "w") as f:
@@ -38,7 +38,7 @@ with open(f"{folder}/charakterystyka.txt", "w") as f:
         mean = None
         median = None
         zero_values = None
-        if column_data.dtype != "object":
+        if column_data.dtype != "object" and column != "review_score":
             min = column_data.min()
             max = column_data.max()
             mean = column_data.mean()
@@ -46,8 +46,8 @@ with open(f"{folder}/charakterystyka.txt", "w") as f:
             zero_values = len(column_data[column_data == 0])
         else:
             zero_values = len(column_data[column_data == "[]"])
-            if column == "tags":
-                d = column_data.apply(utils.decode_tags)
+            if column == "tags" or column == "genres" or column == "categories":
+                d = column_data.apply(utils.decode_multi_hot, args=(column,))
                 d = d.apply(tuple)
                 zero_values = len(d[d != ()])
 
@@ -64,10 +64,10 @@ for column in data.columns:
     if column == "appid" or column == "name":
         continue
 
-    if data[column].dtype == "object" or data[column].dtype == "string":
+    if data[column].dtype == "object" or data[column].dtype == "string" or column == "review_score":
         column_data = data[column][data[column] != "[]"]
-        if column == "tags":
-            column_data = column_data.apply(utils.decode_tags)
+        if column == "tags" or column == "genres" or column == "categories":
+            column_data = column_data.apply(utils.decode_multi_hot, args=(column,))
             column_data = column_data.apply(tuple)
             column_data = column_data[column_data != ()]
 
@@ -78,7 +78,11 @@ for column in data.columns:
         plt.figure(figsize=(16, height))
         counts.plot(kind="barh")
 
-        plt.title(f"Najczęstsze 30 kombinacje {column}")
+        if column == "review_score":
+            plt.title(f"{column}")
+            labels = ["Overwhelmingly Positive","Very Positive","Mostly Positive","Mixed","Mostly Negative","Overwhelmingly Negative"]
+        else:
+            plt.title(f"Najczęstsze 30 kombinacje {column}")
         plt.xlabel("Częstość")
         plt.ylabel(column)
         plt.yticks(range(len(counts)), labels, fontsize=8)

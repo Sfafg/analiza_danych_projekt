@@ -15,6 +15,58 @@ def prepare_build_dir(directory_name):
 
     return folder
 
+def encode_multi_hot(data, column):
+        def parse_values(value):
+            if pd.isna(value) or not str(value).strip():
+                return set()
+
+            parsed = ast.literal_eval(value)
+
+            if not isinstance(parsed, (dict, list)):
+                raise ValueError(f"Unexpected column format: {value}")
+
+            return set(parsed)
+
+        values  = data[column].apply(parse_values)
+
+        all_values = set()
+        for v in values:
+            all_values.update(v)
+
+        value_order = sorted(all_values, key=str.casefold)
+
+        value_order_path = Path("data") / f"kolejnosc_{column}.txt"
+        value_order_path.write_text(", ".join(value_order), encoding="utf-8")
+
+        data[column] = values.apply(lambda v: [int(val in v) for val in value_order])
+
+        return data
+
+orders = {}
+
+def decode_multi_hot(vector, column):
+    global orders
+    if column not in orders:
+        order_path = (
+            Path(__file__).resolve().parent / "data" / f"kolejnosc_{column}.txt"
+        )
+        orders[column] = [
+            v.strip()
+            for v in order_path.read_text(encoding="utf-8").split(",")
+            if v.strip()
+        ]
+    order = orders[column]
+
+    if isinstance(vector, str):
+        vector = json.loads(vector)
+
+    if len(vector) != len(order):
+        raise ValueError(f"Expected {len(order)} values, got {len(vector)}")
+
+    if any(value not in (0, 1) for value in vector):
+        raise ValueError("The vector must contain only 0 and 1")
+
+    return [tag for tag, value in zip(order, vector) if value == 1]
 
 def get_data(target_pipeline_stage=None):
     folder = "data"
@@ -56,57 +108,65 @@ def get_data(target_pipeline_stage=None):
         return data
 
     def encode_tags(data):
-        def parse_tags(
-            value,
-        ):  # the function scrapes tags, sorts them in alphabetical order and adds multi-hot encoding for each row in the tags column based on that alphabetically ordered tags list
-            if pd.isna(value) or not str(value).strip():
-                return set()
+        return encode_multi_hot(data, "tags")
+        
+    def encode_genres(data):
+        return encode_multi_hot(data, "genres")
 
-            parsed = ast.literal_eval(value)
+    def encode_categories(data):
+        return encode_multi_hot(data, "categories")
 
-            if not isinstance(parsed, (dict, list)):
-                raise ValueError(f"Unexpected tags format: {value}")
+    def filter_low_number_of_reviews(data):
+        data = data[
+            (data["positive"] + data["negative"]) >= 10
+        ]
+        return data
 
-            return set(parsed)  # słownik: klucze; lista: jej elementy
-
-        game_tags = data["tags"].apply(parse_tags)
-
-        all_tags = set()
-        for tags in game_tags:
-            all_tags.update(tags)
-
-        tag_order = sorted(all_tags, key=str.casefold)
-
-        tag_order_path = Path(folder) / "kolejnosc_tagow.txt"
-        tag_order_path.write_text(", ".join(tag_order), encoding="utf-8")
-
-        result = data.copy()
-        result["tags"] = game_tags.apply(
-            lambda tags: json.dumps(
-                [int(tag in tags) for tag in tag_order], separators=(",", ":")
-            )
-        )
-
-        print(f"Saved {len(tag_order)} tag names to {tag_order_path}")
-        return result
-    
     def add_positive_ratio(data): # add positive/(positive+negative) ratio
-        result = data.copy()
+        data["positive_ratio"] = data["positive"] / (data["positive"] + data["negative"])
+        return data.drop(columns=["positive", "negative"])
 
-        total_reviews = result["positive"] + result["negative"]
+    def review_score(data):
+        def score(row):
+            positive_ratio = row["positive_ratio"]
+            if positive_ratio >= 0.95:
+                return 5
+            elif positive_ratio >= 0.8:
+                return 4
+            elif positive_ratio >= 0.7:
+                return 3
+            elif positive_ratio >= 0.4:
+                return 2
+            elif positive_ratio >= 0.2:
+                return 1
+            else:
+                return 0
 
-        result["positive_ratio"] = (
-            result["positive"] / total_reviews.where(total_reviews > 0)
-        )#.fillna(0) - if you want to fill rows w/ no reviews w/ 0
+        data["review_score"] = data.apply(score, axis=1)
+        return data.drop(columns=["positive_ratio"])
+    
+    def expand_columns(data):
+        for column in ["tags", "genres", "categories"]:
+            data[column] = data[column].apply(lambda v: json.loads(v))
+            expanded = pd.DataFrame(
+                data[column].tolist(),
+                index=data.index
+            ).add_prefix(f"{column}_")
+            data = data.drop(columns=[column]).join(expanded)
 
-        return result.drop(columns=["positive", "negative"])
+        return data
 
     pipeline = [
         ("games_march2025_cleaned", get_raw_data),
         ("games_march2025_cleaned_selected_columns", select_data),
         ("games_march2025_cleaned_simplified_tags", simplify_tags),
+        ("games_march2025_cleaned_filter_low_number_of_reviews", filter_low_number_of_reviews),
         ("games_march2025_cleaned_multi_hot_tags", encode_tags),
+        ("games_march2025_cleaned_multi_hot_genres", encode_genres),
+        ("games_march2025_cleaned_multi_hot_categories", encode_categories),
         ("games_march2025_cleaned_positive_ratio", add_positive_ratio),
+        ("games_march2025_cleaned_review_scored", review_score),
+        ("games_march2025_cleaned_expanded_columns", expand_columns)
     ]
 
     if target_pipeline_stage is None:
@@ -137,32 +197,3 @@ def get_data(target_pipeline_stage=None):
         latest_data = data
 
     return latest_data
-
-
-TAG_ORDER = None
-
-
-def decode_tags(vector):
-    global TAG_ORDER
-
-    if TAG_ORDER is None:
-        tag_order_path = (
-            Path(__file__).resolve().parent / "data" / "kolejnosc_tagow.txt"
-        )
-        TAG_ORDER = [
-            tag.strip()
-            for tag in tag_order_path.read_text(encoding="utf-8").split(",")
-            if tag.strip()
-        ]
-
-    if isinstance(vector, str):
-        vector = json.loads(vector)
-
-    if len(vector) != len(TAG_ORDER):
-        raise ValueError(f"Expected {len(TAG_ORDER)} values, got {len(vector)}")
-
-    if any(value not in (0, 1) for value in vector):
-        raise ValueError("The vector must contain only 0 and 1")
-
-    return [tag for tag, value in zip(TAG_ORDER, vector) if value == 1]
-
