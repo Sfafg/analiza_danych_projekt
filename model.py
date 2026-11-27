@@ -27,7 +27,7 @@ class_names = [
 
 def load_data():
     data = utils.get_data()
-    X = data.drop(columns=["review_score", "appid", "name"])
+    X = data.drop(columns=["review_score", "appid", "name", "positive", "negative" ])
     y = data["review_score"]
     return train_test_split(
         X,

@@ -122,13 +122,10 @@ def get_data(target_pipeline_stage=None):
         ]
         return data
 
-    def add_positive_ratio(data): # add positive/(positive+negative) ratio
-        data["positive_ratio"] = data["positive"] / (data["positive"] + data["negative"])
-        return data.drop(columns=["positive", "negative"])
-
     def review_score(data):
         def score(row):
-            positive_ratio = row["positive_ratio"]
+
+            positive_ratio = row["positive"] / (row["positive"] + row["negative"])
             if positive_ratio >= 0.95:
                 return 5
             elif positive_ratio >= 0.8:
@@ -164,7 +161,6 @@ def get_data(target_pipeline_stage=None):
         ("games_march2025_cleaned_multi_hot_tags", encode_tags),
         ("games_march2025_cleaned_multi_hot_genres", encode_genres),
         ("games_march2025_cleaned_multi_hot_categories", encode_categories),
-        ("games_march2025_cleaned_positive_ratio", add_positive_ratio),
         ("games_march2025_cleaned_review_scored", review_score),
         ("games_march2025_cleaned_expanded_columns", expand_columns)
     ]
